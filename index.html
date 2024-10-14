@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abstract Art </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+</head>
+<body class="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
+    <div class="relative py-3 sm:max-w-4xl sm:mx-auto"> <!-- Increased max-width -->
+        <div class="absolute inset-0 bg-gradient-to-r from-[#8C1D40] to-[#FFC627] shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
+        <div class="relative bg-white shadow-lg sm:rounded-3xl"> <!-- Removed px-4 py-10 and sm:p-20 -->
+            <div class="max-w-4xl mx-auto"> <!-- Increased max-width -->
+                <div class="divide-y divide-gray-200 w-[800px]">
+                    <div class="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7 px-4 sm:px-10"> <!-- Added padding here -->
+                        <h2 class="text-3xl font-extrabold text-gray-900 text-center">Computational Metrics Visualization</h2>
+                        <div class="flex justify-between">
+                            <div class="w-5/12">
+                                <label for="x-axis" class="block text-sm font-medium text-gray-700 text-center">X-Axis</label>
+                                <select id="x-axis" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#8C1D40] focus:border-[#8C1D40] sm:text-sm rounded-md">
+                                </select>
+                                <div id="x-explanation" class="mt-2 text-sm text-gray-500"></div>
+                            </div>
+                            <div class="w-5/12">
+                                <label for="y-axis" class="block text-sm font-medium text-gray-700 text-center">Y-Axis</label>
+                                <select id="y-axis" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-[#FFC627] focus:border-[#FFC627] sm:text-sm rounded-md">
+                                </select>
+                                <div id="y-explanation" class="mt-2 text-sm text-gray-500"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="py-6 text-base leading-6 font-bold sm:text-lg sm:leading-7">
+                        <div class="w-full h-[600px] px-4 sm:px-10"> <!-- Increased height and added padding -->
+                            <canvas id="scatterplot"></canvas>
+                        </div>
+                    </div>
+                    <div id="artist-link" class="py-4 px-4 sm:px-10 text-center"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const columns = [
+            'artist', 'painting', 'gif_compression', 'jpeg_compression', 'kolmogorov_complexity',
+            'zurek_entropy', 'hough_value', 'laplacian_variance', 'sobel_sharpness',
+            'michelson_contrast', 'mean_magnitude_spectrum', 'fractal_dimension', 'edge_count'
+        ];
+
+        const explanations = {
+            gif_compression: "Measures the file size reduction achieved by GIF compression.",
+            jpeg_compression: "Indicates the level of lossy compression applied to the image in JPEG format.",
+            kolmogorov_complexity: "Estimates the computational resources needed to specify the image.",
+            zurek_entropy: "Quantifies the amount of information content in the image.",
+            hough_value: "Detects the presence of lines or shapes in the image.",
+            laplacian_variance: "Measures the variation in edge detection, indicating image sharpness.",
+            sobel_sharpness: "Evaluates the intensity of edges in the image.",
+            michelson_contrast: "Calculates the ratio between the brightest and darkest parts of the image.",
+            mean_magnitude_spectrum: "Represents the average strength of frequency components in the image.",
+            fractal_dimension: "Indicates the complexity of self-similar patterns in the image.",
+            edge_count: "Counts the number of edges detected in the image.",
+        };
+
+        let data = [];
+        let chart;
+        let lastClickedArtist = '';
+
+
+        function populateDropdowns() {
+            const xAxis = document.getElementById('x-axis');
+            const yAxis = document.getElementById('y-axis');
+
+            columns.slice(2).forEach(column => {
+                const option = document.createElement('option');
+                option.value = column;
+                option.textContent = column.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                xAxis.appendChild(option);
+                yAxis.appendChild(option.cloneNode(true));
+            });
+
+            xAxis.value = columns[2];
+            yAxis.value = columns[3];
+
+            updateExplanations();
+        }
+
+        function updateExplanations() {
+            const xAxis = document.getElementById('x-axis').value;
+            const yAxis = document.getElementById('y-axis').value;
+
+            document.getElementById('x-explanation').textContent = explanations[xAxis];
+            document.getElementById('y-explanation').textContent = explanations[yAxis];
+        }
+
+        function updateArtistLink() {
+            const linkContainer = document.getElementById('artist-link');
+            if (lastClickedArtist) {
+                const encodedArtist = encodeURIComponent(lastClickedArtist);
+                linkContainer.innerHTML = `
+                    <a href="https://www.google.com/search?q=${encodedArtist}&tbm=isch" 
+                       target="_blank" 
+                       class="text-blue-600 hover:text-blue-800 underline">
+                        View ${lastClickedArtist}'s works on Google Images
+                    </a>`;
+            } else {
+                linkContainer.innerHTML = '';
+            }
+        }
+
+
+        function updateChart() {
+            const xAxis = document.getElementById('x-axis').value;
+            const yAxis = document.getElementById('y-axis').value;
+
+            const chartData = {
+                datasets: [{
+                    label: 'Image Data',
+                    data: data.map(item => ({ x: item[xAxis], y: item[yAxis] })),
+                    backgroundColor: '#8C1D40',
+                }],
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: xAxis.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                        },
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: yAxis.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                        },
+                    },
+                },
+                plugins: {
+                    legend: {
+                        display: false,
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const point = data[context.dataIndex];
+                                return `${point.artist} - ${point.painting}`;
+                            },
+                        },
+                    },
+                },
+                onClick: (event, elements) => {
+                    if (elements && elements.length > 0) {
+                        const dataIndex = elements[0].index;
+                        lastClickedArtist = data[dataIndex].artist;
+                        updateArtistLink();
+                    }
+                },
+            };
+
+            if (chart) {
+                chart.data = chartData;
+                chart.options = options;
+                chart.update();
+            } else {
+                chart = new Chart(
+                    document.getElementById('scatterplot'),
+                    {
+                        type: 'scatter',
+                        data: chartData,
+                        options: options
+                    }
+                );
+            }
+
+            updateExplanations();
+
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.split('\n');
+            const headers = lines[0].split(',');
+            return lines.slice(1).map(line => {
+                const values = line.split(',');
+                return headers.reduce((obj, header, index) => {
+                    obj[header.trim()] = values[index];
+                    return obj;
+                }, {});
+            });
+        }
+
+        // Use this instead of generateDummyData()
+        function loadCSVData() {
+            fetch('big_dataset_results.csv')
+                .then(response => response.text())
+                .then(csv => {
+                    data = parseCSV(csv);
+                    updateChart();
+                });
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCSVData();
+            populateDropdowns();
+            updateChart();
+
+            document.getElementById('x-axis').addEventListener('change', updateChart);
+            document.getElementById('y-axis').addEventListener('change', updateChart);
+        });
+    </script>
+</body>
+</html>
